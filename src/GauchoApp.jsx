@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { C, serif, sans, sendManagerEmail } from "./constants";
 import { LOTS, CAROUSEL_AWE, CAROUSEL_GAUCHO, CAROUSEL_WINES } from "./data";
+import {
+  auth,
+  googleProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut,
+  onAuthStateChanged,
+} from "./firebase";
 import AdminPanel from "./AdminPanel";
 import VipTrips from "./VipTrips";
 import WineEstate from "./WineEstate";
@@ -143,98 +153,102 @@ function GauchoApp() {
     return () => clearInterval(interval);
   }, []);
 
-  // ===== AUTHENTICATION HANDLERS =====
-  const handleLogin = () => {
-    setLoginError("");
-    const accounts = {
-      "admin@gaucho.com": { password: "admin", name: "Admin User", isAdmin: true, role: "admin", property: null },
-      "demo@gaucho.com": { password: "demo", name: "Demo User", isAdmin: false, role: "guest", property: null },
-      "member@gaucho.com": { password: "member", name: "Gaucho Member", isAdmin: false, role: "member", property: null },
-      "manager@awe.com": { password: "awe123", name: "AWE Manager", isAdmin: false, role: "manager", property: "Algodon Wine Estates" },
-      "manager@mansion.com": { password: "mansion123", name: "Mansion Manager", isAdmin: false, role: "manager", property: "Algodon Mansion" },
-    };
-    const account = accounts[loginEmail];
-    if (account && account.password === loginPassword) {
-      setUser({ email: loginEmail, name: account.name, isAdmin: account.isAdmin, role: account.role, property: account.property });
-      setShowLoginForm(false);
-      setLoginEmail("");
-      setLoginPassword("");
-      if (account.isAdmin) setCurrentTab("admin");
-    } else {
-      setLoginError("Invalid email or password");
-    }
+  // ===== ROLE LOOKUP =====
+  const ADMIN_EMAILS = {
+    "admin@gaucho.com": { role: "admin", isAdmin: true, property: null },
+    "manager@awe.com": { role: "manager", isAdmin: false, property: "Algodon Wine Estates" },
+    "manager@mansion.com": { role: "manager", isAdmin: false, property: "Algodon Mansion" },
   };
 
-  const handleCreateAccount = () => {
-    if (!newEmail || !newPassword || !newName || !newPhone) {
-      alert("Please fill all fields");
-      return;
-    }
-    const newUser = { id: Date.now(), email: newEmail, name: newName, phone: newPhone, role: "guest", property: null };
-    setAllUsers(prev => [...prev, newUser]);
-    setUser({ email: newEmail, name: newName, phone: newPhone, isAdmin: false, role: "guest", property: null });
-    setShowCreateAccountForm(false);
-    setNewEmail("");
-    setNewPassword("");
-    setNewName("");
-    setNewPhone("");
-    setCurrentTab("vip-trips");
+  const getUserRole = (email) => {
+    const match = ADMIN_EMAILS[email];
+    return match || { role: "guest", isAdmin: false, property: null };
   };
 
-  const handleGoogleLogin = (response) => {
-    try {
-      const payload = JSON.parse(atob(response.credential.split(".")[1]));
-      const googleUser = {
-        email: payload.email,
-        name: payload.name,
-        picture: payload.picture,
-        isAdmin: false,
-        role: "guest",
-        property: null,
-      };
-      // Check if this email matches an admin/manager account
-      const adminEmails = { "admin@gaucho.com": "admin", "manager@awe.com": "manager", "manager@mansion.com": "manager" };
-      if (adminEmails[payload.email]) {
-        googleUser.role = adminEmails[payload.email];
-        googleUser.isAdmin = adminEmails[payload.email] === "admin";
+  // ===== FIREBASE AUTH STATE LISTENER =====
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const roleInfo = getUserRole(firebaseUser.email);
+        setUser({
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+          picture: firebaseUser.photoURL,
+          uid: firebaseUser.uid,
+          ...roleInfo,
+        });
+        if (roleInfo.isAdmin) setCurrentTab("admin");
+      } else {
+        setUser(null);
       }
-      setUser(googleUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ===== AUTHENTICATION HANDLERS =====
+  const handleGoogleLogin = async () => {
+    setLoginError("");
+    try {
+      await signInWithPopup(auth, googleProvider);
       setShowLoginForm(false);
       setCurrentTab("vip-trips");
     } catch (err) {
-      console.error("Google login error:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (window.google && !user) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
-          callback: handleGoogleLogin,
-        });
-      } catch (e) { /* Google SDK not loaded yet */ }
-    }
-  }, [user, showLoginForm, showCreateAccountForm]);
-
-  const renderGoogleButton = () => {
-    setTimeout(() => {
-      const container = document.getElementById("google-signin-btn");
-      if (container && window.google) {
-        container.innerHTML = "";
-        window.google.accounts.id.renderButton(container, {
-          theme: "filled_black",
-          size: "large",
-          width: "100%",
-          text: "continue_with",
-          shape: "rectangular",
-        });
+      if (err.code !== "auth/popup-closed-by-user") {
+        setLoginError(err.message);
       }
-    }, 100);
-    return <div id="google-signin-btn" style={{ width: "100%", marginBottom: "12px" }} />;
+    }
   };
 
-  const handleLogout = () => {
+  const handleLogin = async () => {
+    setLoginError("");
+    try {
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      setShowLoginForm(false);
+      setLoginEmail("");
+      setLoginPassword("");
+    } catch (err) {
+      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+        setLoginError("Invalid email or password");
+      } else {
+        setLoginError(err.message);
+      }
+    }
+  };
+
+  const handleCreateAccount = async () => {
+    if (!newEmail || !newPassword || !newName) {
+      alert("Please fill in name, email, and password");
+      return;
+    }
+    if (newPassword.length < 6) {
+      alert("Password must be at least 6 characters");
+      return;
+    }
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, newEmail, newPassword);
+      await updateProfile(credential.user, { displayName: newName });
+      const newUser = { id: Date.now(), email: newEmail, name: newName, phone: newPhone, role: "guest", property: null };
+      setAllUsers(prev => [...prev, newUser]);
+      setShowCreateAccountForm(false);
+      setNewEmail("");
+      setNewPassword("");
+      setNewName("");
+      setNewPhone("");
+      setCurrentTab("vip-trips");
+    } catch (err) {
+      if (err.code === "auth/email-already-in-use") {
+        alert("An account with this email already exists. Please log in instead.");
+      } else {
+        alert(err.message);
+      }
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
     setUser(null);
     setCurrentTab("vip-trips");
     setShowLoginForm(false);
@@ -574,7 +588,10 @@ function GauchoApp() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "390px" }}>
-          {renderGoogleButton()}
+          <button onClick={handleGoogleLogin} style={{ padding: "14px", backgroundColor: "#FFFFFF", color: "#333", border: "1px solid #555", borderRadius: "4px", fontWeight: "500", cursor: "pointer", fontFamily: sans, fontSize: "15px", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+            <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Continue with Google
+          </button>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "4px 0" }}>
             <div style={{ flex: 1, height: "1px", background: C.border }} />
             <span style={{ color: C.textMuted, fontSize: "12px" }}>or</span>
