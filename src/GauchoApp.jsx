@@ -181,6 +181,59 @@ function GauchoApp() {
     setCurrentTab("vip-trips");
   };
 
+  const handleGoogleLogin = (response) => {
+    try {
+      const payload = JSON.parse(atob(response.credential.split(".")[1]));
+      const googleUser = {
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture,
+        isAdmin: false,
+        role: "guest",
+        property: null,
+      };
+      // Check if this email matches an admin/manager account
+      const adminEmails = { "admin@gaucho.com": "admin", "manager@awe.com": "manager", "manager@mansion.com": "manager" };
+      if (adminEmails[payload.email]) {
+        googleUser.role = adminEmails[payload.email];
+        googleUser.isAdmin = adminEmails[payload.email] === "admin";
+      }
+      setUser(googleUser);
+      setShowLoginForm(false);
+      setCurrentTab("vip-trips");
+    } catch (err) {
+      console.error("Google login error:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (window.google && !user) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+          callback: handleGoogleLogin,
+        });
+      } catch (e) { /* Google SDK not loaded yet */ }
+    }
+  }, [user, showLoginForm, showCreateAccountForm]);
+
+  const renderGoogleButton = () => {
+    setTimeout(() => {
+      const container = document.getElementById("google-signin-btn");
+      if (container && window.google) {
+        container.innerHTML = "";
+        window.google.accounts.id.renderButton(container, {
+          theme: "filled_black",
+          size: "large",
+          width: "100%",
+          text: "continue_with",
+          shape: "rectangular",
+        });
+      }
+    }, 100);
+    return <div id="google-signin-btn" style={{ width: "100%", marginBottom: "12px" }} />;
+  };
+
   const handleLogout = () => {
     setUser(null);
     setCurrentTab("vip-trips");
@@ -521,7 +574,13 @@ function GauchoApp() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%", maxWidth: "390px" }}>
-          <button onClick={() => setShowLoginForm(true)} style={{ padding: "14px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer", fontFamily: sans, fontSize: "16px" }}>Login</button>
+          {renderGoogleButton()}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "4px 0" }}>
+            <div style={{ flex: 1, height: "1px", background: C.border }} />
+            <span style={{ color: C.textMuted, fontSize: "12px" }}>or</span>
+            <div style={{ flex: 1, height: "1px", background: C.border }} />
+          </div>
+          <button onClick={() => setShowLoginForm(true)} style={{ padding: "14px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer", fontFamily: sans, fontSize: "16px" }}>Login with Email</button>
           <button onClick={() => setShowCreateAccountForm(true)} style={{ padding: "14px", backgroundColor: "transparent", color: C.cyan, border: `1px solid ${C.cyan}`, borderRadius: "4px", fontWeight: "600", cursor: "pointer", fontFamily: sans, fontSize: "16px" }}>Create Account</button>
         </div>
       )}
@@ -531,7 +590,7 @@ function GauchoApp() {
   // ===== SHARED HEADER =====
   const renderHeader = () => (
     <header style={{ backgroundColor: C.bg, padding: "14px 16px", position: "sticky", top: 0, zIndex: 999, borderBottom: `1px solid ${C.border}`, textAlign: "center", display: "flex", justifyContent: "center", alignItems: "center" }}>
-      <img src="/images/logos/gaucho-group-holdings.jpg" alt="Gaucho Group Holdings" style={{ height: "70px", opacity: 0.95 }} />
+      <img src="https://i.postimg.cc/9fLX5RGL/Gaucho_Group_Holdings.jpg" alt="Gaucho Group Holdings" style={{ height: "70px", opacity: 0.95 }} />
     </header>
   );
 
@@ -552,7 +611,7 @@ function GauchoApp() {
         { id: "gaucho-ba", lines: ["GAUCHO", "BUENOS AIRES"] },
         { id: "wines", lines: ["ALGODON", "FINE WINES"] },
       ].map(tab => (
-        <button key={tab.id} onClick={() => setCurrentTab(tab.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px", backgroundColor: "transparent", border: "none", cursor: "pointer", padding: "4px 2px", borderBottom: currentTab === tab.id ? `2px solid ${C.cyan}` : "2px solid transparent" }}>
+        <button key={tab.id} onClick={() => { setCurrentTab(tab.id); window.scrollTo(0, 0); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px", backgroundColor: "transparent", border: "none", cursor: "pointer", padding: "4px 2px", borderBottom: currentTab === tab.id ? `2px solid ${C.cyan}` : "2px solid transparent" }}>
           <NavLogo lines={tab.lines} active={currentTab === tab.id} />
         </button>
       ))}
