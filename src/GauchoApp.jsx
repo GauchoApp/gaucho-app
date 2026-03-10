@@ -590,7 +590,7 @@ function GauchoApp() {
   // ===== SHARED HEADER =====
   const renderHeader = () => (
     <header style={{ backgroundColor: C.bg, padding: "14px 16px", position: "sticky", top: 0, zIndex: 999, borderBottom: `1px solid ${C.border}`, textAlign: "center", display: "flex", justifyContent: "center", alignItems: "center" }}>
-      <img src="https://i.postimg.cc/9fLX5RGL/Gaucho_Group_Holdings.jpg" alt="Gaucho Group Holdings" style={{ height: "70px", opacity: 0.95 }} />
+      <img src="https://i.postimg.cc/9fLX5RGL/Gaucho_Group_Holdings.jpg" alt="Gaucho Group Holdings" style={{ height: "140px", opacity: 0.95 }} />
     </header>
   );
 
