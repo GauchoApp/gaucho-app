@@ -563,7 +563,7 @@ function GauchoApp() {
 
   // ===== RENDER VIP LOGIN =====
   const renderVipLogin = () => (
-    <div style={{ padding: "20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+    <div style={{ padding: "20px", paddingBottom: "100px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
       <h2 style={{ fontFamily: serif, fontSize: "22px", color: C.cyan, marginBottom: "8px" }}>VIP Concierge</h2>
       <p style={{ color: C.textMuted, fontSize: "13px", marginBottom: "24px", textAlign: "center" }}>Please sign in to access concierge services and trip planning.</p>
 
