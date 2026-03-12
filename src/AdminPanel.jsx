@@ -1,5 +1,18 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { C, serif, sans, EMAILJS_CONFIG } from "./constants";
+import {
+  db,
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  addDoc,
+  query,
+  where,
+  onSnapshot,
+  serverTimestamp,
+} from "./firebase";
 
 export default function AdminPanel({
   user,
@@ -42,6 +55,81 @@ export default function AdminPanel({
 }) {
   const [managerFilter, setManagerFilter] = useState("all");
 
+  // ===== LOT OWNERSHIP STATE =====
+  const [lotOwnerships, setLotOwnerships] = useState([]);
+  const [showAssignLot, setShowAssignLot] = useState(false);
+  const [assignForm, setAssignForm] = useState({
+    ownerEmail: "", lotId: "", purchasePrice: "", totalPaid: "", downpayment: "",
+    remainingBalance: "", monthlyPayment: "", maintenanceFee: "",
+    houseBuilt: false, village: "Wine & Golf", description: "", acres: "",
+  });
+  const [editingOwnership, setEditingOwnership] = useState(null);
+
+  // Load lot ownerships from Firestore
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "lotOwnership"), (snapshot) => {
+      setLotOwnerships(snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() })));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleAssignLot = async () => {
+    if (!assignForm.ownerEmail || !assignForm.lotId) {
+      alert("Please enter owner email and lot ID"); return;
+    }
+    const data = {
+      ownerEmail: assignForm.ownerEmail.toLowerCase().trim(),
+      lotId: assignForm.lotId.trim(),
+      purchasePrice: parseFloat(assignForm.purchasePrice) || 0,
+      totalPaid: parseFloat(assignForm.totalPaid) || 0,
+      downpayment: parseFloat(assignForm.downpayment) || 0,
+      remainingBalance: parseFloat(assignForm.remainingBalance) || 0,
+      monthlyPayment: parseFloat(assignForm.monthlyPayment) || 0,
+      maintenanceFee: parseFloat(assignForm.maintenanceFee) || 0,
+      houseBuilt: assignForm.houseBuilt,
+      village: assignForm.village,
+      description: assignForm.description,
+      acres: parseFloat(assignForm.acres) || null,
+      autoDebit: false,
+      autoDebitDay: null,
+      assignedDate: serverTimestamp(),
+      assignedBy: user?.email,
+    };
+    if (editingOwnership) {
+      await updateDoc(doc(db, "lotOwnership", editingOwnership.firestoreId), data);
+      setEditingOwnership(null);
+    } else {
+      await addDoc(collection(db, "lotOwnership"), data);
+    }
+    setAssignForm({ ownerEmail: "", lotId: "", purchasePrice: "", totalPaid: "", downpayment: "", remainingBalance: "", monthlyPayment: "", maintenanceFee: "", houseBuilt: false, village: "Wine & Golf", description: "", acres: "" });
+    setShowAssignLot(false);
+    alert(editingOwnership ? "Ownership updated!" : "Lot assigned successfully!");
+  };
+
+  const handleEditOwnership = (ownership) => {
+    setAssignForm({
+      ownerEmail: ownership.ownerEmail || "",
+      lotId: ownership.lotId || "",
+      purchasePrice: ownership.purchasePrice?.toString() || "",
+      totalPaid: ownership.totalPaid?.toString() || "",
+      downpayment: ownership.downpayment?.toString() || "",
+      remainingBalance: ownership.remainingBalance?.toString() || "",
+      monthlyPayment: ownership.monthlyPayment?.toString() || "",
+      maintenanceFee: ownership.maintenanceFee?.toString() || "",
+      houseBuilt: ownership.houseBuilt || false,
+      village: ownership.village || "Wine & Golf",
+      description: ownership.description || "",
+      acres: ownership.acres?.toString() || "",
+    });
+    setEditingOwnership(ownership);
+    setShowAssignLot(true);
+  };
+
+  const formatCurrency = (amount) => {
+    if (amount == null || amount === 0) return "—";
+    return "$" + Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   return (
     <div style={{ backgroundColor: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column", maxWidth: "430px", margin: "0 auto", boxShadow: "0 0 20px rgba(0,0,0,0.5)" }}>
       <div style={{ backgroundColor: C.bgCard, padding: "12px", position: "sticky", top: 0, zIndex: 999, borderBottom: `1px solid ${C.border}` }}>
@@ -55,6 +143,7 @@ export default function AdminPanel({
         <button onClick={() => setAdminTab("requests")} style={{ padding: "8px 16px", backgroundColor: adminTab === "requests" ? C.cyan : "transparent", color: adminTab === "requests" ? C.bg : C.cyan, border: `1px solid ${adminTab === "requests" ? C.cyan : C.border}`, borderRadius: "4px", cursor: "pointer", fontFamily: sans, fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap" }}>Requests</button>
         <button onClick={() => setAdminTab("users")} style={{ padding: "8px 16px", backgroundColor: adminTab === "users" ? C.cyan : "transparent", color: adminTab === "users" ? C.bg : C.cyan, border: `1px solid ${adminTab === "users" ? C.cyan : C.border}`, borderRadius: "4px", cursor: "pointer", fontFamily: sans, fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap" }}>Users</button>
         <button onClick={() => setAdminTab("lots")} style={{ padding: "8px 16px", backgroundColor: adminTab === "lots" ? C.cyan : "transparent", color: adminTab === "lots" ? C.bg : C.cyan, border: `1px solid ${adminTab === "lots" ? C.cyan : C.border}`, borderRadius: "4px", cursor: "pointer", fontFamily: sans, fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap" }}>Lots</button>
+        <button onClick={() => setAdminTab("owners")} style={{ padding: "8px 16px", backgroundColor: adminTab === "owners" ? C.cyan : "transparent", color: adminTab === "owners" ? C.bg : C.cyan, border: `1px solid ${adminTab === "owners" ? C.cyan : C.border}`, borderRadius: "4px", cursor: "pointer", fontFamily: sans, fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap" }}>Owners</button>
       </div>
 
       <div style={{ flex: 1, padding: "16px", fontFamily: sans, overflow: "auto", marginBottom: "70px" }}>
@@ -416,6 +505,74 @@ export default function AdminPanel({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {adminTab === "owners" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontSize: "18px", color: C.cyan, fontFamily: serif }}>Lot Owners</h2>
+              <button onClick={() => { setShowAssignLot(true); setEditingOwnership(null); setAssignForm({ ownerEmail: "", lotId: "", purchasePrice: "", totalPaid: "", downpayment: "", remainingBalance: "", monthlyPayment: "", maintenanceFee: "", houseBuilt: false, village: "Wine & Golf", description: "", acres: "" }); }} style={{ padding: "8px 16px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", cursor: "pointer", fontFamily: sans, fontSize: "12px", fontWeight: "600" }}>+ Assign Lot</button>
+            </div>
+
+            {/* Assign/Edit Form */}
+            {showAssignLot && (
+              <div style={{ backgroundColor: C.bgCard2, padding: "16px", borderRadius: "8px", marginBottom: "16px", border: `1px solid ${C.border}` }}>
+                <h3 style={{ fontSize: "14px", color: C.text, marginBottom: "12px", fontFamily: serif }}>{editingOwnership ? "Edit Ownership" : "Assign Lot to Owner"}</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <input type="email" placeholder="Owner Email *" value={assignForm.ownerEmail} onChange={e => setAssignForm({ ...assignForm, ownerEmail: e.target.value })} style={{ gridColumn: "1 / -1", padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <input type="text" placeholder="Lot ID *" value={assignForm.lotId} onChange={e => setAssignForm({ ...assignForm, lotId: e.target.value })} style={{ padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <select value={assignForm.village} onChange={e => setAssignForm({ ...assignForm, village: e.target.value })} style={{ padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }}>
+                    <option>Wine & Golf</option><option>Garden Estate</option><option>Desert & Vineyard</option><option>Vineyard Estate</option>
+                  </select>
+                  <input type="number" placeholder="Purchase Price" value={assignForm.purchasePrice} onChange={e => setAssignForm({ ...assignForm, purchasePrice: e.target.value })} style={{ padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <input type="number" placeholder="Downpayment" value={assignForm.downpayment} onChange={e => setAssignForm({ ...assignForm, downpayment: e.target.value })} style={{ padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <input type="number" placeholder="Total Paid" value={assignForm.totalPaid} onChange={e => setAssignForm({ ...assignForm, totalPaid: e.target.value })} style={{ padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <input type="number" placeholder="Remaining Balance" value={assignForm.remainingBalance} onChange={e => setAssignForm({ ...assignForm, remainingBalance: e.target.value })} style={{ padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <input type="number" placeholder="Monthly Payment" value={assignForm.monthlyPayment} onChange={e => setAssignForm({ ...assignForm, monthlyPayment: e.target.value })} style={{ padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <input type="number" placeholder="Maintenance Fee" value={assignForm.maintenanceFee} onChange={e => setAssignForm({ ...assignForm, maintenanceFee: e.target.value })} style={{ padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <input type="number" placeholder="Acres" value={assignForm.acres} onChange={e => setAssignForm({ ...assignForm, acres: e.target.value })} style={{ padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <input type="text" placeholder="Description" value={assignForm.description} onChange={e => setAssignForm({ ...assignForm, description: e.target.value })} style={{ gridColumn: "1 / -1", padding: "10px", backgroundColor: C.bgCard, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "13px" }} />
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", color: C.textMuted, fontSize: "13px", cursor: "pointer" }}>
+                    <input type="checkbox" checked={assignForm.houseBuilt} onChange={e => setAssignForm({ ...assignForm, houseBuilt: e.target.checked })} /> House Built
+                  </label>
+                </div>
+                <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                  <button onClick={handleAssignLot} style={{ flex: 1, padding: "10px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "600", fontFamily: sans, fontSize: "13px" }}>{editingOwnership ? "Update" : "Assign"}</button>
+                  <button onClick={() => { setShowAssignLot(false); setEditingOwnership(null); }} style={{ padding: "10px 16px", backgroundColor: "transparent", color: C.textMuted, border: `1px solid ${C.border}`, borderRadius: "4px", cursor: "pointer", fontFamily: sans, fontSize: "13px" }}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* Ownership List */}
+            {lotOwnerships.length === 0 ? (
+              <p style={{ color: C.textMuted, fontSize: "13px", textAlign: "center", padding: "30px 0" }}>No lot owners assigned yet. Click "+ Assign Lot" to add one.</p>
+            ) : (
+              lotOwnerships.map(ownership => (
+                <div key={ownership.firestoreId} style={{ backgroundColor: C.bgCard, borderRadius: "8px", padding: "14px", marginBottom: "10px", border: `1px solid ${C.border}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                    <div>
+                      <div style={{ fontSize: "15px", fontWeight: "600", color: C.text }}>Lot {ownership.lotId}</div>
+                      <div style={{ fontSize: "12px", color: C.cyan }}>{ownership.ownerEmail}</div>
+                      <div style={{ fontSize: "11px", color: C.textMuted }}>{ownership.village}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button onClick={() => handleEditOwnership(ownership)} style={{ padding: "5px 10px", backgroundColor: "transparent", color: C.cyan, border: `1px solid ${C.cyan}`, borderRadius: "4px", cursor: "pointer", fontSize: "11px", fontWeight: "600" }}>Edit</button>
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", fontSize: "11px" }}>
+                    <div><span style={{ color: C.textMuted }}>Price: </span><span style={{ color: C.text }}>{formatCurrency(ownership.purchasePrice)}</span></div>
+                    <div><span style={{ color: C.textMuted }}>Paid: </span><span style={{ color: C.success }}>{formatCurrency(ownership.totalPaid)}</span></div>
+                    <div><span style={{ color: C.textMuted }}>Balance: </span><span style={{ color: ownership.remainingBalance > 0 ? C.pending : C.success }}>{formatCurrency(ownership.remainingBalance)}</span></div>
+                  </div>
+                  <div style={{ display: "flex", gap: "12px", marginTop: "6px", fontSize: "11px" }}>
+                    <span style={{ color: C.textMuted }}>House: <span style={{ color: ownership.houseBuilt ? C.success : C.textDim }}>{ownership.houseBuilt ? "Yes" : "No"}</span></span>
+                    <span style={{ color: C.textMuted }}>Auto-Debit: <span style={{ color: ownership.autoDebit ? C.cyan : C.textDim }}>{ownership.autoDebit ? `Day ${ownership.autoDebitDay}` : "Off"}</span></span>
+                    {ownership.monthlyPayment > 0 && <span style={{ color: C.textMuted }}>Monthly: <span style={{ color: C.text }}>{formatCurrency(ownership.monthlyPayment)}</span></span>}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>

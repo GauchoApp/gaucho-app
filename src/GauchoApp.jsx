@@ -3,6 +3,7 @@ import { C, serif, sans, sendManagerEmail } from "./constants";
 import { LOTS, CAROUSEL_AWE, CAROUSEL_GAUCHO, CAROUSEL_WINES } from "./data";
 import {
   auth,
+  db,
   googleProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
@@ -10,12 +11,17 @@ import {
   updateProfile,
   signOut,
   onAuthStateChanged,
+  collection,
+  query,
+  where,
+  onSnapshot,
 } from "./firebase";
 import AdminPanel from "./AdminPanel";
 import VipTrips from "./VipTrips";
 import WineEstate from "./WineEstate";
 import GauchoBA from "./GauchoBA";
 import Wines from "./Wines";
+import YourAccount from "./YourAccount";
 
 function GauchoApp() {
   // ===== GLOBAL STATE =====
@@ -167,6 +173,17 @@ function GauchoApp() {
 
   // ===== FIREBASE AUTH STATE LISTENER =====
   const [authLoading, setAuthLoading] = useState(true);
+  const [isLotOwner, setIsLotOwner] = useState(false);
+
+  // Check if user is a lot owner
+  useEffect(() => {
+    if (!user?.email) { setIsLotOwner(false); return; }
+    const q = query(collection(db, "lotOwnership"), where("ownerEmail", "==", user.email));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setIsLotOwner(snapshot.docs.length > 0);
+    });
+    return () => unsubscribe();
+  }, [user?.email]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -627,6 +644,7 @@ function GauchoApp() {
         { id: "wine-estate", lines: ["ALGODON", "WINE ESTATES"] },
         { id: "gaucho-ba", lines: ["GAUCHO", "BUENOS AIRES"] },
         { id: "wines", lines: ["ALGODON", "FINE WINES"] },
+        ...(isLotOwner ? [{ id: "your-account", lines: ["YOUR", "ACCOUNT"] }] : []),
       ].map(tab => (
         <button key={tab.id} onClick={() => { setCurrentTab(tab.id); window.scrollTo(0, 0); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px", backgroundColor: "transparent", border: "none", cursor: "pointer", padding: "4px 2px", borderBottom: currentTab === tab.id ? `2px solid ${C.cyan}` : "2px solid transparent" }}>
           <NavLogo lines={tab.lines} active={currentTab === tab.id} />
@@ -848,6 +866,16 @@ function GauchoApp() {
         renderHeader={renderHeader}
         renderNav={renderNav}
         winesCarouselIdx={winesCarouselIdx}
+      />
+    );
+  }
+
+  if (currentTab === "your-account" && isLotOwner) {
+    return (
+      <YourAccount
+        user={user}
+        renderHeader={renderHeader}
+        renderNav={renderNav}
       />
     );
   }
