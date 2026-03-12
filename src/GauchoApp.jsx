@@ -169,7 +169,7 @@ function GauchoApp() {
   };
 
   const getUserRole = (email) => {
-    const match = ADMIN_EMAILS[email];
+    const match = ADMIN_EMAILS[(email || "").toLowerCase().trim()];
     return match || { role: "guest", isAdmin: false, property: null };
   };
 
