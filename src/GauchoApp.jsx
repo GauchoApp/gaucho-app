@@ -22,6 +22,7 @@ import WineEstate from "./WineEstate";
 import GauchoBA from "./GauchoBA";
 import Wines from "./Wines";
 import YourAccount from "./YourAccount";
+import MyTrips from "./MyTrips";
 
 function GauchoApp() {
   // ===== GLOBAL STATE =====
@@ -161,7 +162,7 @@ function GauchoApp() {
 
   // ===== ROLE LOOKUP =====
   const ADMIN_EMAILS = {
-    "admin@gaucho.com": { role: "admin", isAdmin: true, property: null },
+    "mingerflom@algodongroup.com": { role: "admin", isAdmin: true, property: null },
     "manager@awe.com": { role: "manager", isAdmin: false, property: "Algodon Wine Estates" },
     "manager@mansion.com": { role: "manager", isAdmin: false, property: "Algodon Mansion" },
   };
@@ -644,6 +645,7 @@ function GauchoApp() {
         { id: "wine-estate", lines: ["ALGODON", "WINE ESTATES"] },
         { id: "gaucho-ba", lines: ["GAUCHO", "BUENOS AIRES"] },
         { id: "wines", lines: ["ALGODON", "FINE WINES"] },
+        ...(user ? [{ id: "my-trips", lines: ["MY", "TRIPS"] }] : []),
         ...(isLotOwner ? [{ id: "your-account", lines: ["YOUR", "ACCOUNT"] }] : []),
       ].map(tab => (
         <button key={tab.id} onClick={() => { setCurrentTab(tab.id); window.scrollTo(0, 0); }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px", backgroundColor: "transparent", border: "none", cursor: "pointer", padding: "4px 2px", borderBottom: currentTab === tab.id ? `2px solid ${C.cyan}` : "2px solid transparent" }}>
@@ -866,6 +868,16 @@ function GauchoApp() {
         renderHeader={renderHeader}
         renderNav={renderNav}
         winesCarouselIdx={winesCarouselIdx}
+      />
+    );
+  }
+
+  if (currentTab === "my-trips" && user) {
+    return (
+      <MyTrips
+        user={user}
+        renderHeader={renderHeader}
+        renderNav={renderNav}
       />
     );
   }
