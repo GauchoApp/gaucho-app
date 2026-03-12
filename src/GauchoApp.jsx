@@ -300,7 +300,7 @@ function GauchoApp() {
       setConfirmPassword("");
       setNewName("");
       setNewPhone("");
-      alert("Account created! A verification email has been sent to your inbox.");
+      // Verification screen shows automatically after account creation
       // Don't override tab - let onAuthStateChanged set it (admin goes to admin tab)
     } catch (err) {
       if (err.code === "auth/email-already-in-use") {
