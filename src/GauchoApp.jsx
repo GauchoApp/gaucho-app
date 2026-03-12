@@ -33,8 +33,8 @@ function GauchoApp() {
   const [adminTab, setAdminTab] = useState("requests");
 
   // ===== LOGIN FORM STATE =====
-  const [loginEmail, setLoginEmail] = useState("demo@gaucho.com");
-  const [loginPassword, setLoginPassword] = useState("demo");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
   // ===== CREATE ACCOUNT FORM STATE =====
@@ -42,6 +42,7 @@ function GauchoApp() {
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   // ===== WINE ESTATE STATE =====
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -245,6 +246,10 @@ function GauchoApp() {
       alert("Password must be at least 6 characters");
       return;
     }
+    if (newPassword !== confirmPassword) {
+      alert("Passwords don't match. Please re-enter your password.");
+      return;
+    }
     try {
       const credential = await createUserWithEmailAndPassword(auth, newEmail, newPassword);
       await updateProfile(credential.user, { displayName: newName });
@@ -253,6 +258,7 @@ function GauchoApp() {
       setShowCreateAccountForm(false);
       setNewEmail("");
       setNewPassword("");
+      setConfirmPassword("");
       setNewName("");
       setNewPhone("");
       setCurrentTab("vip-trips");
@@ -588,10 +594,11 @@ function GauchoApp() {
       {showCreateAccountForm ? (
         <div style={{ width: "100%", maxWidth: "390px", backgroundColor: C.bgCard, padding: "24px", borderRadius: "8px", border: `1px solid ${C.border}` }}>
           <h3 style={{ fontSize: "16px", marginBottom: "16px", color: C.text, fontFamily: serif }}>Create Account</h3>
-          <input type="text" placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
-          <input type="email" placeholder="Email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
-          <input type="tel" placeholder="Phone" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
-          <input type="password" placeholder="Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "16px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <input type="text" placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && document.getElementById("create-email")?.focus()} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <input id="create-email" type="email" placeholder="Email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && document.getElementById("create-phone")?.focus()} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <input id="create-phone" type="tel" placeholder="Phone" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => e.key === "Enter" && document.getElementById("create-password")?.focus()} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <input id="create-password" type="password" placeholder="Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && document.getElementById("create-confirm-password")?.focus()} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <input id="create-confirm-password" type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreateAccount()} style={{ width: "100%", padding: "12px", marginBottom: "16px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
           <button onClick={handleCreateAccount} style={{ width: "100%", padding: "12px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer", marginBottom: "10px", fontFamily: sans, fontSize: "14px" }}>Create Account</button>
           <button onClick={() => setShowCreateAccountForm(false)} style={{ width: "100%", padding: "12px", backgroundColor: "transparent", color: C.cyan, border: `1px solid ${C.cyan}`, borderRadius: "4px", fontWeight: "600", cursor: "pointer", fontFamily: sans, fontSize: "14px" }}>Back</button>
         </div>
@@ -599,9 +606,9 @@ function GauchoApp() {
         <div style={{ width: "100%", maxWidth: "390px", backgroundColor: C.bgCard, padding: "24px", borderRadius: "8px", border: `1px solid ${C.border}` }}>
           <h3 style={{ fontSize: "16px", marginBottom: "16px", color: C.text, fontFamily: serif }}>Login</h3>
           {loginError && <p style={{ color: C.danger, marginBottom: "10px", fontSize: "12px" }}>{loginError}</p>}
-          <input type="email" placeholder="Email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
-          <input type="password" placeholder="Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "16px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
-          <button onClick={handleLogin} style={{ width: "100%", padding: "12px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer", marginBottom: "10px", fontFamily: sans, fontSize: "14px" }}>Login</button>
+          <input type="email" placeholder="Email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && document.getElementById("login-password")?.focus()} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <input id="login-password" type="password" placeholder="Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleLogin()} style={{ width: "100%", padding: "12px", marginBottom: "16px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <button onClick={handleLogin} style={{ width: "100%", padding: "12px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer", marginBottom: "10px", fontFamily: sans, fontSize: "14px" }}>Sign In</button>
           <button onClick={() => setShowLoginForm(false)} style={{ width: "100%", padding: "12px", backgroundColor: "transparent", color: C.cyan, border: `1px solid ${C.cyan}`, borderRadius: "4px", fontWeight: "600", cursor: "pointer", fontFamily: sans, fontSize: "14px" }}>Back</button>
         </div>
       ) : (

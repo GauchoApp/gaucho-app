@@ -420,6 +420,7 @@ END:VEVENT
             placeholder="e.g. April Wine Country Getaway"
             value={tripForm.name}
             onChange={(e) => setTripForm({ ...tripForm, name: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && document.getElementById("trip-start")?.focus()}
           />
         </div>
 
