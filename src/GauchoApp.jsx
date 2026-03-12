@@ -33,6 +33,7 @@ function GauchoApp() {
   const [showCreateAccountForm, setShowCreateAccountForm] = useState(false);
   const [currentTab, setCurrentTab] = useState("wine-estate");
   const [adminTab, setAdminTab] = useState("requests");
+  const [unverifiedUser, setUnverifiedUser] = useState(null); // Firebase user awaiting email verification
 
   // ===== LOGIN FORM STATE =====
   const [loginEmail, setLoginEmail] = useState("");
@@ -194,6 +195,16 @@ function GauchoApp() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        // Google sign-in users are always verified; email/password users must verify
+        const isGoogleUser = firebaseUser.providerData.some(p => p.providerId === "google.com");
+        if (!isGoogleUser && !firebaseUser.emailVerified) {
+          // Email not verified — show verification screen
+          setUnverifiedUser(firebaseUser);
+          setUser(null);
+          setAuthLoading(false);
+          return;
+        }
+        setUnverifiedUser(null);
         const roleInfo = getUserRole(firebaseUser.email);
         setUser({
           email: firebaseUser.email,
@@ -205,6 +216,7 @@ function GauchoApp() {
         if (roleInfo.isAdmin) setCurrentTab("admin");
       } else {
         setUser(null);
+        setUnverifiedUser(null);
       }
       setAuthLoading(false);
     });
@@ -302,9 +314,48 @@ function GauchoApp() {
   const handleLogout = async () => {
     await signOut(auth);
     setUser(null);
+    setUnverifiedUser(null);
     setCurrentTab("vip-trips");
     setShowLoginForm(false);
     setShowCreateAccountForm(false);
+  };
+
+  const handleResendVerification = async () => {
+    if (!unverifiedUser) return;
+    try {
+      await sendEmailVerification(unverifiedUser);
+      alert("Verification email sent! Check your inbox.");
+    } catch (err) {
+      if (err.code === "auth/too-many-requests") {
+        alert("Too many requests. Please wait a few minutes and try again.");
+      } else {
+        alert(err.message);
+      }
+    }
+  };
+
+  const handleCheckVerification = async () => {
+    if (!unverifiedUser) return;
+    try {
+      await unverifiedUser.reload();
+      if (unverifiedUser.emailVerified) {
+        // Now verified — trigger auth state update
+        const roleInfo = getUserRole(unverifiedUser.email);
+        setUser({
+          email: unverifiedUser.email,
+          name: unverifiedUser.displayName || unverifiedUser.email.split("@")[0],
+          picture: unverifiedUser.photoURL,
+          uid: unverifiedUser.uid,
+          ...roleInfo,
+        });
+        setUnverifiedUser(null);
+        if (roleInfo.isAdmin) setCurrentTab("admin");
+      } else {
+        alert("Email not verified yet. Please check your inbox and click the verification link.");
+      }
+    } catch (err) {
+      alert("Could not check verification status. Please try again.");
+    }
   };
 
   // ===== CONCIERGE SUBMISSION HANDLERS =====
@@ -614,7 +665,38 @@ function GauchoApp() {
   };
 
   // ===== RENDER VIP LOGIN =====
-  const renderVipLogin = () => (
+  const renderVipLogin = () => {
+    // Email verification pending screen
+    if (unverifiedUser) {
+      return (
+        <div style={{ padding: "20px 20px 120px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <h2 style={{ fontFamily: serif, fontSize: "22px", color: C.cyan, marginBottom: "8px" }}>Verify Your Email</h2>
+          <div style={{ width: "100%", maxWidth: "390px", backgroundColor: C.bgCard, padding: "24px", borderRadius: "8px", border: `1px solid ${C.border}`, textAlign: "center" }}>
+            <div style={{ fontSize: "48px", marginBottom: "16px" }}>📧</div>
+            <p style={{ fontFamily: sans, fontSize: "14px", color: C.text, marginBottom: "8px" }}>
+              We sent a verification email to:
+            </p>
+            <p style={{ fontFamily: sans, fontSize: "15px", color: C.cyan, fontWeight: "600", marginBottom: "16px" }}>
+              {unverifiedUser.email}
+            </p>
+            <p style={{ fontFamily: sans, fontSize: "13px", color: C.textMuted, marginBottom: "24px" }}>
+              Please check your inbox and click the verification link to activate your account.
+            </p>
+            <button onClick={handleCheckVerification} style={{ width: "100%", padding: "12px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer", marginBottom: "10px", fontFamily: sans, fontSize: "14px" }}>
+              I've Verified My Email
+            </button>
+            <button onClick={handleResendVerification} style={{ width: "100%", padding: "12px", backgroundColor: "transparent", color: C.cyan, border: `1px solid ${C.cyan}`, borderRadius: "4px", fontWeight: "600", cursor: "pointer", marginBottom: "10px", fontFamily: sans, fontSize: "14px" }}>
+              Resend Verification Email
+            </button>
+            <button onClick={handleLogout} style={{ width: "100%", padding: "12px", backgroundColor: "transparent", color: C.textMuted, border: `1px solid ${C.border}`, borderRadius: "4px", fontWeight: "600", cursor: "pointer", fontFamily: sans, fontSize: "13px" }}>
+              Use a Different Account
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
     <div style={{ padding: "20px 20px 120px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <h2 style={{ fontFamily: serif, fontSize: "22px", color: C.cyan, marginBottom: "8px" }}>VIP Concierge</h2>
       <p style={{ color: C.textMuted, fontSize: "13px", marginBottom: "24px", textAlign: "center" }}>Please sign in to access concierge services and trip planning.</p>
@@ -656,7 +738,8 @@ function GauchoApp() {
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   // ===== SHARED HEADER =====
   const renderHeader = () => (
