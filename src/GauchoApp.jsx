@@ -11,6 +11,8 @@ import {
   updateProfile,
   signOut,
   onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
   collection,
   query,
   where,
@@ -239,6 +241,23 @@ function GauchoApp() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!loginEmail) {
+      alert("Please enter your email address first, then tap Forgot Password.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, loginEmail);
+      alert("Password reset email sent! Check your inbox.");
+    } catch (err) {
+      if (err.code === "auth/user-not-found") {
+        alert("No account found with this email.");
+      } else {
+        alert(err.message);
+      }
+    }
+  };
+
   const handleCreateAccount = async () => {
     if (!newEmail || !newPassword || !newName) {
       alert("Please fill in name, email, and password");
@@ -255,6 +274,12 @@ function GauchoApp() {
     try {
       const credential = await createUserWithEmailAndPassword(auth, newEmail, newPassword);
       await updateProfile(credential.user, { displayName: newName });
+      // Send verification email
+      try {
+        await sendEmailVerification(credential.user);
+      } catch (emailErr) {
+        console.log("Verification email error:", emailErr);
+      }
       const newUser = { id: Date.now(), email: newEmail, name: newName, phone: newPhone, role: "guest", property: null };
       setAllUsers(prev => [...prev, newUser]);
       setShowCreateAccountForm(false);
@@ -263,6 +288,7 @@ function GauchoApp() {
       setConfirmPassword("");
       setNewName("");
       setNewPhone("");
+      alert("Account created! A verification email has been sent to your inbox.");
       setCurrentTab("vip-trips");
     } catch (err) {
       if (err.code === "auth/email-already-in-use") {
@@ -609,7 +635,8 @@ function GauchoApp() {
           <h3 style={{ fontSize: "16px", marginBottom: "16px", color: C.text, fontFamily: serif }}>Login</h3>
           {loginError && <p style={{ color: C.danger, marginBottom: "10px", fontSize: "12px" }}>{loginError}</p>}
           <input type="email" placeholder="Email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && document.getElementById("login-password")?.focus()} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
-          <input id="login-password" type="password" placeholder="Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleLogin()} style={{ width: "100%", padding: "12px", marginBottom: "16px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <input id="login-password" type="password" placeholder="Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleLogin()} style={{ width: "100%", padding: "12px", marginBottom: "8px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <button onClick={handleForgotPassword} style={{ background: "none", border: "none", color: C.cyan, fontFamily: sans, fontSize: "12px", cursor: "pointer", padding: "0 0 12px", textAlign: "right", width: "100%", display: "block" }}>Forgot Password?</button>
           <button onClick={handleLogin} style={{ width: "100%", padding: "12px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer", marginBottom: "10px", fontFamily: sans, fontSize: "14px" }}>Sign In</button>
           <button onClick={() => setShowLoginForm(false)} style={{ width: "100%", padding: "12px", backgroundColor: "transparent", color: C.cyan, border: `1px solid ${C.cyan}`, borderRadius: "4px", fontWeight: "600", cursor: "pointer", fontFamily: sans, fontSize: "14px" }}>Back</button>
         </div>
