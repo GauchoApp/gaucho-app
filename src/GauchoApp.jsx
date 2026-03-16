@@ -45,6 +45,9 @@ function GauchoApp() {
   const [newPhone, setNewPhone] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // ===== WINE ESTATE STATE =====
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -620,8 +623,14 @@ function GauchoApp() {
           <input type="text" placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
           <input type="email" placeholder="Email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
           <input type="tel" placeholder="Phone" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
-          <input type="password" placeholder="Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
-          <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "16px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <div style={{ position: "relative", marginBottom: "10px" }}>
+            <input type={showNewPassword ? "text" : "password"} placeholder="Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ width: "100%", padding: "12px", paddingRight: "44px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+            <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: "16px", padding: "4px" }}>{showNewPassword ? "🙈" : "👁"}</button>
+          </div>
+          <div style={{ position: "relative", marginBottom: "16px" }}>
+            <input type={showConfirmPassword ? "text" : "password"} placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={{ width: "100%", padding: "12px", paddingRight: "44px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: "16px", padding: "4px" }}>{showConfirmPassword ? "🙈" : "👁"}</button>
+          </div>
           <button type="submit" style={{ width: "100%", padding: "12px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer", marginBottom: "10px", fontFamily: sans, fontSize: "14px" }}>Create Account</button>
           <button type="button" onClick={() => setShowCreateAccountForm(false)} style={{ width: "100%", padding: "12px", backgroundColor: "transparent", color: C.cyan, border: `1px solid ${C.cyan}`, borderRadius: "4px", fontWeight: "600", cursor: "pointer", fontFamily: sans, fontSize: "14px" }}>Back</button>
         </form>
@@ -630,7 +639,10 @@ function GauchoApp() {
           <h3 style={{ fontSize: "16px", marginBottom: "16px", color: C.text, fontFamily: serif }}>Sign In</h3>
           {loginError && <p style={{ color: C.danger, marginBottom: "10px", fontSize: "12px" }}>{loginError}</p>}
           <input type="email" placeholder="Email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "10px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
-          <input type="password" placeholder="Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} style={{ width: "100%", padding: "12px", marginBottom: "8px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+          <div style={{ position: "relative", marginBottom: "8px" }}>
+            <input type={showLoginPassword ? "text" : "password"} placeholder="Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} style={{ width: "100%", padding: "12px", paddingRight: "44px", backgroundColor: C.bgCard2, border: `1px solid ${C.border}`, borderRadius: "4px", color: C.text, fontFamily: sans, fontSize: "14px", boxSizing: "border-box" }} />
+            <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: "16px", padding: "4px" }}>{showLoginPassword ? "🙈" : "👁"}</button>
+          </div>
           <button type="button" onClick={handleForgotPassword} style={{ background: "none", border: "none", color: C.cyan, fontFamily: sans, fontSize: "12px", cursor: "pointer", padding: "0 0 12px", textAlign: "right", width: "100%", display: "block" }}>Forgot Password?</button>
           <button type="submit" style={{ width: "100%", padding: "12px", backgroundColor: C.cyan, color: C.bg, border: "none", borderRadius: "4px", fontWeight: "600", cursor: "pointer", marginBottom: "10px", fontFamily: sans, fontSize: "14px" }}>Sign In</button>
           <button type="button" onClick={() => setShowLoginForm(false)} style={{ width: "100%", padding: "12px", backgroundColor: "transparent", color: C.cyan, border: `1px solid ${C.cyan}`, borderRadius: "4px", fontWeight: "600", cursor: "pointer", fontFamily: sans, fontSize: "14px" }}>Back</button>
