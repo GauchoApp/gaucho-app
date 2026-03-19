@@ -48,6 +48,10 @@ function GauchoApp() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showTerms, setShowTerms] = useState(false); // show terms acceptance screen
+  const [acceptedTos, setAcceptedTos] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [pendingUser, setPendingUser] = useState(null); // user waiting to accept terms
 
   // ===== WINE ESTATE STATE =====
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -194,20 +198,38 @@ function GauchoApp() {
     return () => unsubscribe();
   }, [user?.email]);
 
+  const activateUser = (firebaseUser) => {
+    const roleInfo = getUserRole(firebaseUser.email);
+    setUser({
+      email: firebaseUser.email,
+      name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+      picture: firebaseUser.photoURL,
+      uid: firebaseUser.uid,
+      ...roleInfo,
+    });
+    setPendingUser(null);
+    setShowTerms(false);
+    if (roleInfo.isAdmin) setCurrentTab("admin");
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        const roleInfo = getUserRole(firebaseUser.email);
-        setUser({
-          email: firebaseUser.email,
-          name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
-          picture: firebaseUser.photoURL,
-          uid: firebaseUser.uid,
-          ...roleInfo,
-        });
-        if (roleInfo.isAdmin) setCurrentTab("admin");
+        // Check if user already accepted terms
+        const accepted = localStorage.getItem(`tos_accepted_${firebaseUser.uid}`);
+        if (accepted) {
+          activateUser(firebaseUser);
+        } else {
+          // Show terms acceptance screen
+          setPendingUser(firebaseUser);
+          setShowTerms(true);
+          setAcceptedTos(false);
+          setAcceptedPrivacy(false);
+        }
       } else {
         setUser(null);
+        setPendingUser(null);
+        setShowTerms(false);
       }
       setAuthLoading(false);
     });
@@ -297,9 +319,34 @@ function GauchoApp() {
   };
 
   const handleLogout = async () => {
+    const lastEmail = user?.email || "";
     await signOut(auth);
     setUser(null);
     setCurrentTab("vip-trips");
+    setShowCreateAccountForm(false);
+    // Go straight to Sign In with email pre-filled
+    setLoginEmail(lastEmail);
+    setLoginPassword("");
+    setShowLoginPassword(false);
+    setShowLoginForm(true);
+  };
+
+  const handleAcceptTerms = () => {
+    if (!acceptedTos || !acceptedPrivacy) {
+      alert("Please accept both the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
+    if (pendingUser) {
+      localStorage.setItem(`tos_accepted_${pendingUser.uid}`, "true");
+      activateUser(pendingUser);
+    }
+  };
+
+  const handleDeclineTerms = async () => {
+    await signOut(auth);
+    setUser(null);
+    setPendingUser(null);
+    setShowTerms(false);
     setShowLoginForm(false);
     setShowCreateAccountForm(false);
   };
@@ -709,6 +756,69 @@ function GauchoApp() {
       )}
     </nav>
   );
+
+  // ===== TERMS OF SERVICE SCREEN =====
+  if (showTerms && pendingUser && !user) {
+    return (
+      <div style={{ backgroundColor: C.bg, minHeight: "100vh", maxWidth: "430px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <header style={{ backgroundColor: C.bg, padding: "14px 16px", borderBottom: `1px solid ${C.border}`, textAlign: "center", width: "100%", boxSizing: "border-box" }}>
+          <img src="https://i.postimg.cc/9fLX5RGL/Gaucho_Group_Holdings.jpg" alt="Gaucho Group Holdings" style={{ height: "140px", opacity: 0.95 }} />
+        </header>
+        <div style={{ padding: "24px 20px", width: "100%", boxSizing: "border-box" }}>
+          <h2 style={{ fontFamily: serif, fontSize: "22px", color: C.cyan, marginBottom: "8px", textAlign: "center" }}>Welcome to Gaucho App</h2>
+          <p style={{ fontFamily: sans, fontSize: "13px", color: C.textMuted, textAlign: "center", marginBottom: "24px" }}>
+            Before continuing, please review and accept our Terms of Service and Privacy Policy.
+          </p>
+          <div style={{ backgroundColor: C.bgCard, borderRadius: "8px", padding: "20px", border: `1px solid ${C.border}` }}>
+            {/* Terms of Service checkbox */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "16px" }}>
+              <input
+                type="checkbox"
+                checked={acceptedTos}
+                onChange={(e) => setAcceptedTos(e.target.checked)}
+                style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: C.cyan, cursor: "pointer", flexShrink: 0 }}
+              />
+              <label style={{ fontFamily: sans, fontSize: "14px", color: C.text, cursor: "pointer" }} onClick={() => setAcceptedTos(!acceptedTos)}>
+                I have read and accept the{" "}
+                <a href="https://www.gfrst.com/terms-of-service" target="_blank" rel="noopener noreferrer" style={{ color: C.cyan, textDecoration: "underline" }} onClick={(e) => e.stopPropagation()}>
+                  Terms of Service
+                </a>
+              </label>
+            </div>
+            {/* Privacy Policy checkbox */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "24px" }}>
+              <input
+                type="checkbox"
+                checked={acceptedPrivacy}
+                onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                style={{ marginTop: "3px", width: "18px", height: "18px", accentColor: C.cyan, cursor: "pointer", flexShrink: 0 }}
+              />
+              <label style={{ fontFamily: sans, fontSize: "14px", color: C.text, cursor: "pointer" }} onClick={() => setAcceptedPrivacy(!acceptedPrivacy)}>
+                I have read and accept the{" "}
+                <a href="https://www.gfrst.com/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: C.cyan, textDecoration: "underline" }} onClick={(e) => e.stopPropagation()}>
+                  Privacy Policy
+                </a>
+              </label>
+            </div>
+            <button
+              onClick={handleAcceptTerms}
+              style={{
+                width: "100%", padding: "14px", borderRadius: "4px", border: "none", fontFamily: sans, fontSize: "15px", fontWeight: "600", cursor: acceptedTos && acceptedPrivacy ? "pointer" : "not-allowed",
+                backgroundColor: acceptedTos && acceptedPrivacy ? C.cyan : C.border,
+                color: acceptedTos && acceptedPrivacy ? C.bg : C.textDim,
+                marginBottom: "10px",
+              }}
+            >
+              Continue
+            </button>
+            <button onClick={handleDeclineTerms} style={{ width: "100%", padding: "12px", backgroundColor: "transparent", color: C.textMuted, border: `1px solid ${C.border}`, borderRadius: "4px", fontFamily: sans, fontSize: "13px", cursor: "pointer" }}>
+              Decline and Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ===== TAB ROUTING =====
   if (user?.isAdmin && currentTab === "admin") {
